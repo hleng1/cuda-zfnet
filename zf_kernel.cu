@@ -1,3 +1,5 @@
+#include <math.h>
+
 __global__ void run_conv_1(float *d_input, float *d_layer_1_weights, float *d_layer_1_input) {
   // stride 2, filter size 7
   float product = 0;
@@ -43,16 +45,36 @@ __global__ void run_padding_1(float *d_layer_1_pooled, float *d_layer_1_padded) 
   int tx = threadIdx.x;
   int ty = threadIdx.y;
   int bx = blockIdx.x;
-  for (int i = 0; i < 55; i++) {
-    for (int j = 0; j < 55; j++) {
-      d_layer_1_padded[(i + 1) * 55 + (j + 1) + tx + ty * 55 + bx * 55 * 55] = d_layer_1_pooled[i * 55 + j + tx + ty * 55 + bx * 55 * 55];
-    }
-  }
+  d_layer_1_padded[(ty + 1) * 55 + (tx + 1) + bx * 55 * 55] = d_layer_1_pooled[(ty + 1) * 55 + (tx + 1) + bx * 55 * 55];
 }
 
 __global__ void run_lcn_1(float *d_layer_1_padded, float *d_layer_1_pooled) {
   // reuse d_layer_1_pooled to store the result array of layer 1
-
+  float sum = 0;
+  float mean = 0;
+  float sv = 0; // standard variance
+  float sd = 0; // standard deviation
+  int tx = threadIdx.x;
+  int ty = threadIdx.y;
+  int bx = blockIdx.x;
+  // caculate mean of adjacent 9 pixels
+  for (int p = -1; p < 1; p++) {
+    for (int q = -1; q < 1; q++) {
+      sum += d_layer_1_padded[(ty + p) * 55 + (tx + q) + bx * 55 * 55];
+    }
+  }
+  mean = sum / 9;
+  // calculate standard variance
+  for (int p = -1; p < 1; p++) {
+    for (int q = -1; q < 1; q++) {
+      sv += pow(d_layer_1_padded[ty * 55 + tx + bx * 55 * 55] - mean, 2);
+    }
+  }
+  // calculate standard deviation
+  sd = sqrtf(sv/9);
+  if (sd > 1) {
+    d_layer_1_pooled[tx + ty * 55 + bx * 55 * 55] /= sd; 
+  }
 }
 
 
