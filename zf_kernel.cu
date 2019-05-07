@@ -45,7 +45,7 @@ __global__ void run_padding_1(float *d_layer_1_pooled, float *d_layer_1_padded) 
   int tx = threadIdx.x;
   int ty = threadIdx.y;
   int bx = blockIdx.x;
-  d_layer_1_padded[(ty + 1) * 55 + (tx + 1) + bx * 55 * 55] = d_layer_1_pooled[(ty + 1) * 55 + (tx + 1) + bx * 55 * 55];
+  d_layer_1_padded[(ty + 1) * 55 + (tx + 1) + bx * 55 * 55] = d_layer_1_pooled[ty * 55 + tx + bx * 55 * 55];
 }
 
 __global__ void run_lcn_1(float *d_layer_1_padded, float *d_layer_1_pooled) {
