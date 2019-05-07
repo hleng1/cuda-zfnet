@@ -1,6 +1,6 @@
 #include <math.h>
 
-__global__ void run_conv_1(float *d_input, float *d_layer_1_weights, float *d_layer_1_input, int stride, int filter_size, int channel_num, int input_width, int output_width) {
+__global__ void run_conv(float *d_input, float *d_layer_1_weights, float *d_layer_1_input, int stride, int filter_size, int channel_num, int input_width, int output_width) {
   float product = 0;
   int tx = threadIdx.x;
   int ty = threadIdx.y;
@@ -20,33 +20,31 @@ __global__ void run_conv_1(float *d_input, float *d_layer_1_weights, float *d_la
   product = 0;
 }
 
-__global__ void run_pool_1(float *d_layer_1_input, float *d_layer_1_pooled) {
-  // stride 2, pool size 3
+__global__ void run_pool(float *d_layer_1_input, float *d_layer_1_pooled, int stride, int pool_size, int input_width, int output_width) {
   float max = 0, cur;
-  int stride = 2;
   int tx = threadIdx.x;
   int ty = threadIdx.y;
   int bx = blockIdx.x;
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
-      cur = d_layer_1_input[i * 110 + j + tx * stride + ty * 110 * stride + bx * 110 * 110];
+  for (int i = 0; i < pool_size; i++) {
+    for (int j = 0; j < pool_size; j++) {
+      cur = d_layer_1_input[i * input_width + j + tx * stride + ty * input_width * stride + bx * input_width * input_width];
       if (max < cur) {
         max = cur;
       }
     }
   }
-  d_layer_1_pooled[tx + ty * 55 + bx * 55 * 55] = max;
+  d_layer_1_pooled[tx + ty * output_width + bx * output_width * output_width] = max;
   max = 0;
 }
 
-__global__ void run_padding_1(float *d_layer_1_pooled, float *d_layer_1_padded, int width) {
+__global__ void run_padding(float *d_layer_1_pooled, float *d_layer_1_padded, int width) {
   int tx = threadIdx.x;
   int ty = threadIdx.y;
   int bx = blockIdx.x;
   d_layer_1_padded[(ty + 1) * width + (tx + 1) + bx * width * width] = d_layer_1_pooled[ty * width + tx + bx * width * width];
 }
 
-__global__ void run_lcn_1(float *d_layer_1_padded, float *d_layer_1_pooled) {
+__global__ void run_lcn(float *d_layer_1_padded, float *d_layer_1_pooled, int width) {
   // reuse d_layer_1_pooled to store the result array of layer 1
   float sum = 0;
   float mean = 0;
@@ -58,20 +56,20 @@ __global__ void run_lcn_1(float *d_layer_1_padded, float *d_layer_1_pooled) {
   // caculate mean of adjacent 9 pixels
   for (int p = -1; p < 1; p++) {
     for (int q = -1; q < 1; q++) {
-      sum += d_layer_1_padded[(ty + p) * 55 + (tx + q) + bx * 55 * 55];
+      sum += d_layer_1_padded[(ty + p) * width + (tx + q) + bx * width * width];
     }
   }
   mean = sum / 9;
   // calculate standard variance
   for (int p = -1; p < 1; p++) {
     for (int q = -1; q < 1; q++) {
-      sv += pow(d_layer_1_padded[ty * 55 + tx + bx * 55 * 55] - mean, 2);
+      sv += pow(d_layer_1_padded[ty * width + tx + bx * width * width] - mean, 2);
     }
   }
   // calculate standard deviation
   sd = sqrtf(sv/9);
   if (sd > 1) {
-    d_layer_1_pooled[tx + ty * 55 + bx * 55 * 55] /= sd; 
+    d_layer_1_pooled[tx + ty * width + bx * width * width] /= sd; 
   }
 }
 

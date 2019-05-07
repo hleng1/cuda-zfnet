@@ -90,44 +90,52 @@ int main(int argc, char **argv) {
 
   printf("Running conv_1 ...\n");
   // stride 2, filter size 7, channel_num 3, input_width 224, output_width 110
-  run_conv_1<<<conv_1_grid_dim, conv_1_block_dim>>>(d_input, d_layer_1_weights, d_layer_1_input, 2, 7, 3, 224, 110);
+  run_conv<<<conv_1_grid_dim, conv_1_block_dim>>>(d_input, d_layer_1_weights, d_layer_1_input, 2, 7, 3, 224, 110);
 
   dim3 pool_1_grid_dim(96, 1, 1);
   dim3 pool_1_block_dim(55, 55);
   printf("Running pool_1 ...\n");
-  run_pool_1<<<pool_1_grid_dim, pool_1_block_dim>>>(d_layer_1_input, d_layer_1_pooled);
+  // stride 2, pool size 3, input_width 110, output_width 55
+  run_pool<<<pool_1_grid_dim, pool_1_block_dim>>>(d_layer_1_input, d_layer_1_pooled, 2, 3, 110, 55);
 
   dim3 pad_1_grid_dim(96, 1, 1);
   dim3 pad_1_block_dim(55, 55);
   printf("Padding pool_1 output ...\n");
-  run_padding_1<<<pad_1_grid_dim, pad_1_block_dim>>>(d_layer_1_pooled, d_layer_1_padded, 55);
+  // width 55
+  run_padding<<<pad_1_grid_dim, pad_1_block_dim>>>(d_layer_1_pooled, d_layer_1_padded, 55);
 
   dim3 lcn_1_grid_dim(96, 1, 1);
   dim3 lcn_1_block_dim(55, 55);
   printf("Running lcn_1\n");
-  run_lcn_1<<<lcn_1_grid_dim, lcn_1_block_dim>>>(d_layer_1_padded, d_layer_1_pooled);
+  // width 55
+  run_lcn_1<<<lcn_1_grid_dim, lcn_1_block_dim>>>(d_layer_1_padded, d_layer_1_pooled, 55);
 
   // layer 2: 26 * 26 * 256
   dim3 conv_2_grid_dim(256, 1, 1);
   dim3 conv_2_block_dim(26, 26);
 
+
   printf("Running conv_2 ...\n");
-  run_conv_2<<<conv_2_grid_dim, conv_2_block_dim>>>(d_input, d_layer_2_weights, d_layer_2_input);
+  // stride 2, filter size 5, channel_num 96, input_width 55, output_width 26 
+  run_conv<<<conv_2_grid_dim, conv_2_block_dim>>>(d_layer_1_pooled, d_layer_2_weights, d_layer_2_input, 2, 5, 96, 55, 26);
 
   dim3 pool_2_grid_dim(256, 1, 1);
   dim3 pool_2_block_dim(26, 26);
   printf("Running pool_2 ...\n");
-  run_pool_2<<<pool_2_grid_dim, pool_2_block_dim>>>(d_layer_2_input, d_layer_2_pooled);
+  // stride 2, pool size 3, input_width 26, output_width 13
+  run_pool<<<pool_2_grid_dim, pool_2_block_dim>>>(d_layer_2_input, d_layer_2_pooled, 2, 3, 26, 13);
 
   dim3 pad_2_grid_dim(256, 1, 1);
   dim3 pad_2_block_dim(26, 26);
   printf("Padding pool_2 output ...\n");
-  run_padding_2<<<pad_2_grid_dim, pad_2_block_dim>>>(d_layer_2_pooled, d_layer_2_padded, 26);
+  // width 26
+  run_padding<<<pad_2_grid_dim, pad_2_block_dim>>>(d_layer_2_pooled, d_layer_2_padded, 26);
 
   dim3 lcn_2_grid_dim(256, 1, 1);
   dim3 lcn_2_block_dim(26, 26);
   printf("Running lcn_2\n");
-  run_lcn_2<<<lcn_2_grid_dim, lcn_2_block_dim>>>(d_layer_2_padded, d_layer_2_pooled);
+  // width 13
+  run_lcn_2<<<lcn_2_grid_dim, lcn_2_block_dim>>>(d_layer_2_padded, d_layer_2_pooled, 13);
 
 
 }
