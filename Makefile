@@ -1,2 +1,4 @@
 all:
-	gcc -o test zf_host.c -Wall -g
+	nvcc -o test zf_host.cu
+clean:
+	rm test
