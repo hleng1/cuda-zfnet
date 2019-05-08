@@ -47,7 +47,10 @@ const int OUTPUT_SIZE = 1000;
 void read_file(const char *file_path, float *dest_array);
 
 int main(int argc, char **argv) {
-
+  if (argc != 2) {
+    printf("Usage: ./zfnet <input_file_path>\nExample: ./zfnet data/input.txt\n");
+    return 0;
+  } 
   // host
   float *input_array; // layer_1_input
   float *layer_1_weights;
@@ -73,7 +76,7 @@ int main(int argc, char **argv) {
 
   output_array = (float *)malloc(OUTPUT_SIZE * sizeof(float));
 
-  read_file("data/input.txt", input_array);
+  read_file(argv[1], input_array);
 
 
   printf("Reading layer1 weights ...\n");
@@ -515,20 +518,62 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  // extra relu
-
   cudaMemcpy(output_array, d_layer_8_input, OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
 
   float max = 0;
   int output_index;
   for (int i = 0; i < 1000; i++) {
-    // printf("%f\n", (output_array[i]));
+    printf("%f\n", (output_array[i]));
     if (max < output_array[i]) {
       max = output_array[i];
       output_index = i;
     }
   }
-  printf("Index: %d\n", output_index);
+  printf("Index: %d, Max: %f\n", output_index, max);
+
+
+  free(input_array); // layer_1_input
+  free(layer_1_weights);
+  free(layer_2_weights);
+  free(layer_3_weights);
+  free(layer_4_weights);
+  free(layer_5_weights);
+  free(layer_6_weights);
+  free(layer_7_weights);
+  free(layer_8_weights);
+  free(output_array);
+
+
+  cudaFree(d_input);
+  cudaFree(d_layer_1_input);
+  cudaFree(d_layer_1_weights);
+  cudaFree(d_layer_1_pooled);
+  cudaFree(d_layer_1_padded);
+
+  cudaFree(d_layer_2_input);
+  cudaFree(d_layer_2_weights);
+  cudaFree(d_layer_2_pooled);
+  cudaFree(d_layer_2_padded);
+
+  cudaFree(d_layer_3_input);
+  cudaFree(d_layer_3_weights);
+
+  cudaFree(d_layer_4_input);
+  cudaFree(d_layer_4_weights);
+
+  cudaFree(d_layer_5_input);
+  cudaFree(d_layer_5_pooled);
+  cudaFree(d_layer_5_weights);
+
+  cudaFree(d_layer_6_input);
+  cudaFree(d_layer_6_weights);
+
+  cudaFree(d_layer_7_input);
+  cudaFree(d_layer_7_weights);
+
+  cudaFree(d_layer_8_input);
+  cudaFree(d_layer_8_weights);
+
 }
 
 
