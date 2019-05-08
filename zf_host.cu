@@ -36,14 +36,20 @@ int main(int argc, char **argv) {
   float *input_array; // layer_1_input
   float *layer_1_weights;
   float *layer_2_weights;
+  float *layer_3_weights;
+  float *layer_4_weights;
 
   input_array = (float *)malloc(INPUT_SIZE * sizeof(float));
   layer_1_weights = (float *)malloc(LAYER_1_FILTER_SIZE * LAYER_1_FILTER_NUM * sizeof(float));
   layer_2_weights = (float *)malloc(LAYER_2_FILTER_SIZE * LAYER_2_FILTER_NUM * sizeof(float));
+  layer_3_weights = (float *)malloc(LAYER_3_FILTER_SIZE * LAYER_3_FILTER_NUM * sizeof(float));
+  layer_4_weights = (float *)malloc(LAYER_4_FILTER_SIZE * LAYER_4_FILTER_NUM * sizeof(float));
 
-  // read_file("data/input.txt", input_array);
+  read_file("data/input.txt", input_array);
   read_file("data/layer1.txt", layer_1_weights);
   read_file("data/layer2.txt", layer_2_weights);
+  read_file("data/layer3.txt", layer_3_weights);
+  read_file("data/layer4.txt", layer_4_weights);
 
 
 
@@ -58,6 +64,12 @@ int main(int argc, char **argv) {
   float *d_layer_2_weights;
   float *d_layer_2_pooled;
   float *d_layer_2_padded;
+
+  float *d_layer_3_input;
+  float *d_layer_3_weights;
+
+  float *d_layer_4_input;
+  float *d_layer_4_weights;
 
   // input 
   cudaMalloc((void **)&d_input, INPUT_SIZE * sizeof(float));
@@ -83,6 +95,17 @@ int main(int argc, char **argv) {
   cudaMemset(d_layer_2_padded, 0, LAYER_2_POOLED_SIZE * sizeof(float));
 
 
+  // layer 3
+  cudaMalloc((void **)&d_layer_3_input, LAYER_3_INPUT_SIZE * sizeof(float));
+
+  cudaMalloc((void **)&d_layer_3_weights, LAYER_3_FILTER_SIZE * LAYER_3_FILTER_NUM * sizeof(float));
+  cudaMemcpy(d_layer_3_weights, layer_3_weights, LAYER_3_FILTER_SIZE * LAYER_3_FILTER_NUM * sizeof(float), cudaMemcpyHostToDevice);
+
+  // layer 4
+  cudaMalloc((void **)&d_layer_4_input, LAYER_4_INPUT_SIZE * sizeof(float));
+
+  cudaMalloc((void **)&d_layer_4_weights, LAYER_4_FILTER_SIZE * LAYER_4_FILTER_NUM * sizeof(float));
+  cudaMemcpy(d_layer_3_weights, layer_4_weights, LAYER_4_FILTER_SIZE * LAYER_4_FILTER_NUM * sizeof(float), cudaMemcpyHostToDevice);
 
   // layer 1: 110 * 110 * 96
   dim3 conv_1_grid_dim(96, 1, 1);
@@ -110,10 +133,11 @@ int main(int argc, char **argv) {
   // width 55
   run_lcn_1<<<lcn_1_grid_dim, lcn_1_block_dim>>>(d_layer_1_padded, d_layer_1_pooled, 55);
 
+
+
   // layer 2: 26 * 26 * 256
   dim3 conv_2_grid_dim(256, 1, 1);
   dim3 conv_2_block_dim(26, 26);
-
 
   printf("Running conv_2 ...\n");
   // stride 2, filter size 5, channel_num 96, input_width 55, output_width 26 
@@ -138,6 +162,22 @@ int main(int argc, char **argv) {
   run_lcn_2<<<lcn_2_grid_dim, lcn_2_block_dim>>>(d_layer_2_padded, d_layer_2_pooled, 13);
 
 
+
+  // layer 3: 13 * 13 * 384 
+  dim3 conv_3_grid_dim(384, 1, 1);
+  dim3 conv_3_block_dim(13, 13);
+
+  printf("Running conv_3 ...\n");
+  // stride 1, filter size 3, channel_num 256, input_width 13,  output_width 13
+  run_conv<<<conv_3_grid_dim, conv_3_block_dim>>>(d_layer_2_pooled, d_layer_3_weights, d_layer_3_input, 1, 3, 256, 13, 13);
+
+  // layer 4: 13 * 13 * 384 
+  dim3 conv_4_grid_dim(384, 1, 1);
+  dim3 conv_4_block_dim(13, 13);
+
+  printf("Running conv_4 ...\n");
+  // stride 1, filter size 3, channel_num 384, input_width 13,  output_width 13
+  run_conv<<<conv_4_grid_dim, conv_4_block_dim>>>(d_layer_3_input, d_layer_4_weights, d_layer_4_input, 1, 3, 384, 13, 13);
 }
 
 
