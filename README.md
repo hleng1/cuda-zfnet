@@ -10,8 +10,8 @@ get rgb value of image and extract to txt file, modify the image name and output
 
 get weightes and extract to txt files from pretrained model from Keras
 
-###Usage
+### Usage
 
-`make`
+run `make`
 
 `./zfnet <input_file_path>`
