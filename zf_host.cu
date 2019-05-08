@@ -27,15 +27,22 @@ const int LAYER_4_FILTER_NUM = 384;
 
 const int LAYER_5_INPUT_SIZE = 13 * 13 * 256;
 const int LAYER_5_POOLED_SIZE = 6 * 6 * 256;
-const int LAYER_5_FILTER_SIZE = 1 * 1 * 4096;
+const int LAYER_5_FILTER_SIZE = 3 * 3 * 384; 
+const int LAYER_5_FILTER_NUM = 256;
 
 const int LAYER_6_INPUT_SIZE = 1 * 1 * 4096;
-const int LAYER_6_FILTER_SIZE = 1 * 1 * 4096;
+const int LAYER_6_FILTER_SIZE = 6 * 6 * 256;
+const int LAYER_6_FILTER_NUM = 4096;
 
 const int LAYER_7_INPUT_SIZE = 1 * 1 * 4096;
-const int LAYER_7_FILTER_SIZE = 1 * 1 * 1000;
+const int LAYER_7_FILTER_SIZE = 1 * 1 * 4096;
+const int LAYER_7_FILTER_NUM = 4096;
 
-const int LAYER_8_INPUT_SIZE = 1 * 1 * 4096;
+const int LAYER_8_INPUT_SIZE = 1 * 1 * 1000;
+const int LAYER_8_FILTER_SIZE = 1 * 1 * 4096;
+const int LAYER_8_FILTER_NUM = 1000;
+
+const int OUTPUT_SIZE = 1000;
 
 void read_file(const char *file_path, float *dest_array);
 
@@ -51,6 +58,7 @@ int main(int argc, char **argv) {
   float *layer_6_weights;
   float *layer_7_weights;
   float *layer_8_weights;
+  float *output_array;
 
   input_array = (float *)malloc(INPUT_SIZE * sizeof(float));
 
@@ -63,13 +71,19 @@ int main(int argc, char **argv) {
   layer_7_weights = (float *)malloc(LAYER_7_FILTER_SIZE * LAYER_7_FILTER_NUM * sizeof(float));
   layer_8_weights = (float *)malloc(LAYER_8_FILTER_SIZE * LAYER_8_FILTER_NUM * sizeof(float));
 
+  output_array = (float *)malloc(OUTPUT_SIZE * sizeof(float));
+
   read_file("data/input.txt", input_array);
+  printf("Reading layer1 weights ...\n");
   read_file("data/layer1.txt", layer_1_weights);
   read_file("data/layer2.txt", layer_2_weights);
+  printf("Reading layer3 weights ...\n");
   read_file("data/layer3.txt", layer_3_weights);
   read_file("data/layer4.txt", layer_4_weights);
+  printf("Reading layer5 weights ...\n");
   read_file("data/layer5.txt", layer_5_weights);
   read_file("data/layer6.txt", layer_6_weights);
+  printf("Reading layer7 weights ...\n");
   read_file("data/layer7.txt", layer_7_weights);
   read_file("data/layer8.txt", layer_8_weights);
 
@@ -104,6 +118,7 @@ int main(int argc, char **argv) {
   float *d_layer_7_weights;
 
   float *d_layer_8_input;
+  float *d_layer_8_weights;
 
   // input 
   cudaMalloc((void **)&d_input, INPUT_SIZE * sizeof(float));
@@ -147,6 +162,7 @@ int main(int argc, char **argv) {
 
   cudaMalloc((void **)&d_layer_5_weights, LAYER_5_FILTER_SIZE * LAYER_5_FILTER_NUM * sizeof(float));
   cudaMemcpy(d_layer_5_weights, layer_5_weights, LAYER_5_FILTER_SIZE * LAYER_5_FILTER_NUM * sizeof(float), cudaMemcpyHostToDevice);
+  cudaMalloc((void **)&d_layer_5_pooled, LAYER_5_POOLED_SIZE * sizeof(float));
 
 
   // layer 6
@@ -196,7 +212,7 @@ int main(int argc, char **argv) {
   dim3 lcn_1_block_dim(55, 55);
   printf("Running lcn_1 ...\n");
   // width 55
-  run_lcn_1<<<lcn_1_grid_dim, lcn_1_block_dim>>>(d_layer_1_padded, d_layer_1_pooled, 55);
+  run_lcn<<<lcn_1_grid_dim, lcn_1_block_dim>>>(d_layer_1_padded, d_layer_1_pooled, 55);
 
 
 
@@ -224,7 +240,7 @@ int main(int argc, char **argv) {
   dim3 lcn_2_block_dim(26, 26);
   printf("Running lcn_2 ...\n");
   // width 13
-  run_lcn_2<<<lcn_2_grid_dim, lcn_2_block_dim>>>(d_layer_2_padded, d_layer_2_pooled, 13);
+  run_lcn<<<lcn_2_grid_dim, lcn_2_block_dim>>>(d_layer_2_padded, d_layer_2_pooled, 13);
 
 
 
@@ -293,6 +309,19 @@ int main(int argc, char **argv) {
 
   // extra relu
 
+  cudaMemcpy(output_array, d_layer_8_input, OUTPUT_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+
+  float max = 0; 
+  int output_index;
+  for (int i = 0; i < 1000; i++) {
+    printf("%f\n", (output_array[i]));
+    if (max < output_array[i]) {
+      max = output_array[i];
+      output_index = i;
+    }
+  }
+  printf("Index: %f\n", output_index);
+
 }
 
 
@@ -307,7 +336,7 @@ void read_file(const char *file_path, float *dest_array) {
     exit(EXIT_FAILURE);
   }
   while ((nread = getline(&line, &len, fp)) != -1) {
-    printf("Read %zu\n", len);
+    // printf("Read %zu\n", len);
     dest_array[count++] = atof(line);
   }
   free(line);
