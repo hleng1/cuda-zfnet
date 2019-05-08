@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <cuda_runtime.h>
 
 #include "zf_kernel.cu"
 
@@ -120,8 +121,12 @@ int main(int argc, char **argv) {
   float *d_layer_8_input;
   float *d_layer_8_weights;
 
+
+  cudaError_t err_code;
+
   // input 
   cudaMalloc((void **)&d_input, INPUT_SIZE * sizeof(float));
+  cudaMemcpy(d_input, input, INPUT_SIZE* sizeof(float), cudaMemcpyHostToDevice);
   // layer 1
   cudaMalloc((void **)&d_layer_1_input, LAYER_1_INPUT_SIZE * sizeof(float));
   cudaMalloc((void **)&d_layer_1_weights, LAYER_1_FILTER_SIZE * LAYER_1_FILTER_NUM * sizeof(float));
@@ -186,8 +191,7 @@ int main(int argc, char **argv) {
   cudaMemcpy(d_layer_8_weights, layer_8_weights, LAYER_8_FILTER_SIZE * LAYER_8_FILTER_NUM * sizeof(float), cudaMemcpyHostToDevice);
 
 
-
-
+/*
   // layer 1: 110 * 110 * 96
   dim3 conv_1_grid_dim(96, 1, 1);
   dim3 conv_1_block_dim(110, 110);
@@ -196,11 +200,23 @@ int main(int argc, char **argv) {
   // stride 2, filter size 7, channel_num 3, input_width 224, output_width 110
   run_conv<<<conv_1_grid_dim, conv_1_block_dim>>>(d_input, d_layer_1_weights, d_layer_1_input, 2, 7, 3, 224, 110);
 
+  err_code = cudaGetLastError();
+  if (err_code != cudaSuccess) {
+    printf("conv error: %s\n", cudaGetErrorString(err_code));
+    exit(EXIT_FAILURE);
+  }
+
   dim3 pool_1_grid_dim(96, 1, 1);
   dim3 pool_1_block_dim(55, 55);
   printf("Running pool_1 ...\n");
   // stride 2, pool size 3, input_width 110, output_width 55
   run_pool<<<pool_1_grid_dim, pool_1_block_dim>>>(d_layer_1_input, d_layer_1_pooled, 2, 3, 110, 55);
+
+  err_code = cudaGetLastError();
+  if (err_code != cudaSuccess) {
+    printf("pool error: %s\n", cudaGetErrorString(err_code));
+    exit(EXIT_FAILURE);
+  }
 
   dim3 pad_1_grid_dim(96, 1, 1);
   dim3 pad_1_block_dim(55, 55);
@@ -208,12 +224,24 @@ int main(int argc, char **argv) {
   // width 55
   run_padding<<<pad_1_grid_dim, pad_1_block_dim>>>(d_layer_1_pooled, d_layer_1_padded, 55);
 
+  err_code = cudaGetLastError();
+  if (err_code != cudaSuccess) {
+    printf("padding error: %s\n", cudaGetErrorString(err_code));
+    exit(EXIT_FAILURE);
+  }
+
   dim3 lcn_1_grid_dim(96, 1, 1);
   dim3 lcn_1_block_dim(55, 55);
   printf("Running lcn_1 ...\n");
   // width 55
   run_lcn<<<lcn_1_grid_dim, lcn_1_block_dim>>>(d_layer_1_padded, d_layer_1_pooled, 55);
 
+  err_code = cudaGetLastError();
+  if (err_code != cudaSuccess) {
+    printf("lcn error: %s\n", cudaGetErrorString(err_code));
+    exit(EXIT_FAILURE);
+  }
+*/
 
 
   // layer 2: 26 * 26 * 256
@@ -321,6 +349,12 @@ int main(int argc, char **argv) {
     }
   }
   printf("Index: %f\n", output_index);
+
+  err_code = cudaGetLastError();
+  if (err_code != cudaSuccess) {
+    printf("Last error: %s\n", cudaGetErrorString(err_code));
+    exit(EXIT_FAILURE);
+  }
 
 }
 
