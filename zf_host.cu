@@ -523,7 +523,7 @@ int main(int argc, char **argv) {
   float max = 0;
   int output_index;
   for (int i = 0; i < 1000; i++) {
-    printf("%f\n", (output_array[i]));
+    // printf("%f\n", (output_array[i]));
     if (max < output_array[i]) {
       max = output_array[i];
       output_index = i;
