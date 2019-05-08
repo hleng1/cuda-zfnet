@@ -1,4 +1,4 @@
 all:
-	nvcc -o test zf_host.cu
+	nvcc -o zfnet zf_host.cu
 clean:
-	rm test
+	rm zfnet
