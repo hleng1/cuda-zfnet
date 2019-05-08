@@ -1,6 +1,7 @@
 #include <math.h>
 
 __global__ void run_conv(float *d_input, float *d_layer_1_weights, float *d_layer_1_input, int stride, int filter_size, int channel_num, int input_width, int output_width, int ty_offset, int tx_offset) {
+  float product = 0;
   int tx = threadIdx.x + tx_offset;
   int ty = threadIdx.y + ty_offset;
   int bx = blockIdx.x;
@@ -19,6 +20,24 @@ __global__ void run_conv(float *d_input, float *d_layer_1_weights, float *d_laye
   product = 0;
 }
 
+__global__ void run_fc_8(float *d_input, float *d_layer_1_weights, float *d_layer_1_input, int stride, int filter_size, int channel_num, int input_width, int output_width, int ty_offset, int tx_offset) {
+  float product = 0;
+  int tx = threadIdx.x + tx_offset;
+  int ty = threadIdx.y + ty_offset;
+  int bx = blockIdx.x;
+  for (int k = 1; k <= channel_num; k++) {
+    for (int i = 0; i < filter_size; i++) {
+      for (int j = 0; j < filter_size; j++) {
+        product += d_input[channel_num * (i * input_width + j + tx * stride + ty * input_width * stride) + k] * d_layer_1_weights[i * filter_size + j + bx * filter_size * filter_size * channel_num + filter_size * filter_size * k];
+      }
+    }
+  }
+  // no ReLU
+  d_layer_1_input[tx + ty * output_width + bx * output_width * output_width] = product;
+  product = 0;
+}
+
+
 __global__ void run_pool(float *d_layer_1_input, float *d_layer_1_pooled, int stride, int pool_size, int input_width, int output_width, int ty_offset, int tx_offset) {
   float max = 0, cur;
   int tx = threadIdx.x + tx_offset;
@@ -36,7 +55,7 @@ __global__ void run_pool(float *d_layer_1_input, float *d_layer_1_pooled, int st
   max = 0;
 }
 
-__global__ void run_padding(float *d_layer_1_pooled, float *d_layer_1_padded, int width, int ty_offset, tx_offset) {
+__global__ void run_padding(float *d_layer_1_pooled, float *d_layer_1_padded, int width, int ty_offset, int tx_offset) {
   int tx = threadIdx.x + tx_offset;
   int ty = threadIdx.y + ty_offset;
   int bx = blockIdx.x;
